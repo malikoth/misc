@@ -1,0 +1,3 @@
+rumps
+requests
+pyobjc
