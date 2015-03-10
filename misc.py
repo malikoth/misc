@@ -1,10 +1,3 @@
-# TODO: Persist settings to the app folder settings file
-# TODO: Add notification option for displaying new song info
-# TODO: Add support for album image to the notification
-# TODO: Add better time formatting
-# TODO: Attribute icon files correctly
-# TODO: Add setup.py to create py2app correctly
-
 import os
 import subprocess
 import rumps
@@ -39,6 +32,12 @@ commands = OrderedDict([
     ('Previous track', ('previous track', 'step1.png')),
 ])
 
+character_subs = {
+    226: 34,
+    195: 'e',
+    # 174: '(R)'
+}
+
 
 class MMSI(rumps.App):
     def __init__(self):
@@ -58,13 +57,14 @@ class MMSI(rumps.App):
             temp = self._run_osascript(attributes['id'])
             if temp != self.id:
                 for var, action in attributes.iteritems():
-                    setattr(self, var, filter(lambda c: ord(c) < 128, self._run_osascript(action)))
+                    setattr(self, var, ''.join((chr(character_subs[ord(c)]) if isinstance(character_subs[ord(c)], int) else character_subs[ord(c)])
+                                               if ord(c) in character_subs else c if ord(c) < 128 else '' for c in self._run_osascript(action)))
 
                     if var == 'duration':
                         self.duration = time.strftime('%M:%S', time.gmtime(float(self.duration)))
                     if var == 'rating':
                         self.rating = '' if self.rating == 'false' else '*' * int(self.rating)
-                    if var == 'album' and self.album.startswith('http://adclick'):
+                    if var == 'album' and any(map(self.album.startswith, ('http://adclick', 'spotify:'))):
                         self.album = 'Spotify Ad'
                     self.menu['Current track'][var].title = '{}: {}'.format(var, getattr(self, var))
                 self.shuffle = self._run_osascript('shuffling') == 'true'
