@@ -7,7 +7,7 @@ It also has commands to let you control Spotify through applescript.
 
 Here's what it looks like most of the time:
 
-![Main Display](https://raw.githubusercontent.com/Jzar/misc/docs/screenshots/MISC_dialog.png)
+![Main Display](https://raw.githubusercontent.com/Jzar/misc/docs/screenshots/MISC_display.png)
 
 Here are the status and control menus:
 
