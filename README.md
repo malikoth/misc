@@ -1,5 +1,13 @@
 # Mac Interface Spotify Client (MISC)
 
+## Installation
+
+* Download https://github.com/Jzar/misc/releases/download/v0.1.1/misc.tgz
+* Extract, and copy the app to your Applications folder
+* See the [Issues with Spotify](https://github.com/Jzar/misc#issues-with-spotify) section, and patch Spotify if applicable.
+ * Restart Spotify if necessary
+* Run MISC
+
 ## Overview
 
 Here's my own take on a nice statusbar app to display the current status of Spotify.
