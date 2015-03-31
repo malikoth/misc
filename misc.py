@@ -8,21 +8,32 @@ import time
 
 DEFAULT_ICON_SIZE = (16, 16)
 
-attributes = OrderedDict([
-    ('song', 'name of current track'),
-    ('artist', 'artist of current track'),
-    ('album', 'album of current track'),
-    ('album_artist', 'album artist of current track'),
-    ('position', 'player position'),
-    ('duration', 'duration of current track'),
-    ('disc', 'disc number of current track'),
-    ('count', 'played count of current track'),
-    ('num', 'track number of current track'),
-    ('rating', 'starred of current track'),
-    ('popularity', 'popularity of current track'),
-    ('url', 'spotify url of current track'),
-    ('id', 'id of current track'),
-])
+track_properties = [
+    'name',
+    'artist',
+    'album',
+    'album artist',
+    'player position',
+    'duration',
+    'disc number',
+    'played count',
+    'track number',
+    'starred',
+    'popularity',
+    'spotify url',
+    'id',
+]
+
+player_properties = [
+    'shuffling enabled',
+    'shuffling',
+    'class',
+    'repeating',
+    'current track',
+    'sound volume',
+    'player state',
+    'artwork',
+]
 
 commands = OrderedDict([
     ('Play', ('play', 'play39.png')),
@@ -39,49 +50,51 @@ character_subs = {
 }
 
 
+def _replace_chars(unsafe):
+    return ''.join((chr(character_subs[ord(c)]) if isinstance(character_subs[ord(c)], int) else
+                   character_subs[ord(c)]) if ord(c) in character_subs else c if ord(c) < 128 else '' for c in unsafe)
+
+
 class MMSI(rumps.App):
     def __init__(self):
         super(MMSI, self).__init__(type(self).__name__)
-        for attr in attributes.keys():
-            setattr(self, attr, None)
-
+        self.properties = {}
         self.icon = 'images/spotify.png'
-        self.format_string = '{song} - {album} ({position} / {duration})'
-        self.shuffle = None
-        self.repeat = None
+        self.format_string = '{name:.35} - {album:.35} ({player position} / {duration})'
         self.setup_menu()
 
     @rumps.timer(1)
     def check_status(self, sender):
         try:
-            temp = self._run_osascript(attributes['id'])
-            if temp != self.id:
-                for var, action in attributes.iteritems():
-                    setattr(self, var, ''.join((chr(character_subs[ord(c)]) if isinstance(character_subs[ord(c)], int) else character_subs[ord(c)])
-                                               if ord(c) in character_subs else c if ord(c) < 128 else '' for c in self._run_osascript(action)))
+            props = self._run_osascript('get {get properties, get properties of current track}').split(', ')
+            for prop in props:
+                prop = _replace_chars(prop)
+                if any(map(prop.startswith, track_properties + player_properties)):
+                    key, _, val = prop.partition(':')
+                    if key in ('duration', 'player position'):
+                        val = time.strftime('%M:%S', time.gmtime(float(val)))
+                    if key == 'starred':
+                        val = '' if val == 'false' else '*' * int(val)
+                    if key == 'album' and any(map(val.startswith, ('http://', 'https://', 'spotify:'))):
+                        val = 'Spotify Ad'
+                    self.properties[key] = val
+                    last_key = key
+                else:
+                    self.properties[last_key] += ', ' + prop
 
-                    if var == 'duration':
-                        self.duration = time.strftime('%M:%S', time.gmtime(float(self.duration)))
-                    if var == 'rating':
-                        self.rating = '' if self.rating == 'false' else '*' * int(self.rating)
-                    if var == 'album' and any(map(self.album.startswith, ('http://adclick', 'spotify:'))):
-                        self.album = 'Spotify Ad'
-                    self.menu['Current track'][var].title = '{}: {}'.format(var, getattr(self, var))
-                self.shuffle = self._run_osascript('shuffling') == 'true'
-                self.menu['Options']['Shuffle'].state = self.shuffle
-                self.repeat = self._run_osascript('repeating') == 'true'
-                self.menu['Options']['Repeat'].state = self.repeat
-            if temp == self.id and 'position' in self.format_string:
-                self.position = time.strftime('%M:%S', time.gmtime(float(self._run_osascript(attributes['position']))))
-                self.menu['Current track']['position'].title = '{}: {}'.format('position', self.position)
+            for prop in track_properties:
+                    self.menu['Current track'][prop].title = '{}: {}'.format(prop, self.properties[prop])
+
+            self.menu['Options']['Shuffle'].state = self.properties['shuffling'] == 'true'
+            self.menu['Options']['Repeat'].state = self.properties['repeating'] == 'true'
         except Exception:
             raise
-        self.title = self.format_string.format(**{attr: getattr(self, attr) for attr in attributes.keys()})
+        self.title = self.format_string.format(**{prop: self.properties[prop] for prop in track_properties})
 
     def setup_menu(self):
         self.menu = [
             {'Spotify': ['Version:', 'Launch', 'Quit']},
-            {'Current track': attributes.keys()},
+            {'Current track': track_properties},
             {'Options': ['Format String', None, 'Shuffle', 'Repeat', {
                 'Sound Volume': [rumps.MenuItem('{}%'.format(volume),
                                  callback=lambda x: self._run_osascript('set sound volume to {}'.format(x.title[:-1])))
@@ -120,7 +133,7 @@ Enter any string you'd like to be displayed.
 
 The following tokens would be replaced with the listed values for the current track.  See the 'Current Track' submenu at any time to see these values while listening
 
-""" + '\n'.join('{{{}}} - {}'.format(attr, getattr(self, attr)) for attr in attributes.keys())
+""" + '\n'.join('{{{}}} - {}'.format(prop, self.properties[prop]) for prop in track_properties)
 
         response = rumps.Window(title="Format String", message=help_text, default_text=self.format_string, cancel=True, dimensions=(450, 22)).run()
         if response.clicked:
