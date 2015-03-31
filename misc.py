@@ -1,9 +1,11 @@
 import os
 import subprocess
-import rumps
-
-from collections import OrderedDict
 import time
+
+from ConfigParser import ConfigParser
+from collections import OrderedDict
+
+import rumps
 
 
 DEFAULT_ICON_SIZE = (16, 16)
@@ -55,12 +57,14 @@ def _replace_chars(unsafe):
                    character_subs[ord(c)]) if ord(c) in character_subs else c if ord(c) < 128 else '' for c in unsafe)
 
 
-class MMSI(rumps.App):
+class MISC(rumps.App):
+    format_string = '{name:.35} - {album:.35} ({player position} / {duration})'
+
     def __init__(self):
-        super(MMSI, self).__init__(type(self).__name__)
+        super(MISC, self).__init__(type(self).__name__)
         self.properties = {}
         self.icon = 'images/spotify.png'
-        self.format_string = '{name:.35} - {album:.35} ({player position} / {duration})'
+        self.load_settings()
         self.setup_menu()
 
     @rumps.timer(1)
@@ -83,13 +87,21 @@ class MMSI(rumps.App):
                     self.properties[last_key] += ', ' + prop
 
             for prop in track_properties:
-                    self.menu['Current track'][prop].title = '{}: {}'.format(prop, self.properties[prop])
+                self.menu['Current track'][prop].title = '{}: {}'.format(prop, self.properties[prop])
 
             self.menu['Options']['Shuffle'].state = self.properties['shuffling'] == 'true'
             self.menu['Options']['Repeat'].state = self.properties['repeating'] == 'true'
         except Exception:
             raise
         self.title = self.format_string.format(**{prop: self.properties[prop] for prop in track_properties})
+
+    def load_settings(self):
+        try:
+            config = ConfigParser()
+            config.readfp(self.open('settings.ini'))
+            self.format_string = config.get('options', 'format_string', vars={'format_string': MISC.format_string})
+        except:
+            pass
 
     def setup_menu(self):
         self.menu = [
@@ -138,6 +150,10 @@ The following tokens would be replaced with the listed values for the current tr
         response = rumps.Window(title="Format String", message=help_text, default_text=self.format_string, cancel=True, dimensions=(450, 22)).run()
         if response.clicked:
             self.format_string = response.text.strip()
+            config = ConfigParser()
+            config.add_section('options')
+            config.set('options', 'format_string', self.format_string)
+            config.write(self.open('settings.ini', 'w'))
 
     @rumps.clicked('Options', 'Shuffle')
     def set_shuffle(self, sender):
@@ -159,4 +175,4 @@ The following tokens would be replaced with the listed values for the current tr
 
 
 if __name__ == '__main__':
-    MMSI().run()
+    MISC().run()
