@@ -24,7 +24,7 @@ Here are the status and control menus:
 
 You can control the format of the text displayed in the statusbar, and apply [Python string formatting](https://docs.python.org/2.7/library/string.html#formatstrings) to it.
 You can use all of the variables shown in the 'Current track' menu to display whatever information you want.  Python
-string formatting capabilities give you access to alignment, spacing, fill, number formatting, and min and max width for
+string formatting capabilities give you access to alignment, spacing, fill, number, and min and max width for
 each field in the format string.  Make it as long or as short as you want, and make it display whatever information you
 care about.
 
