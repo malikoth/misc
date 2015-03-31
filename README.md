@@ -4,8 +4,8 @@
 
 * Download https://github.com/Jzar/misc/releases/download/v0.1.1/misc.tgz
 * Extract, and copy the app to your Applications folder
-* See the [Issues with Spotify](https://github.com/Jzar/misc#issues-with-spotify) section, and patch Spotify if applicable.
- * Restart Spotify if necessary
+* See the [Issues with Spotify](https://github.com/Jzar/misc#issues-with-spotify) section
+ * Patch and restart Spotify if necessary
 * Run MISC
 
 ## Overview
