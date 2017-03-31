@@ -1,5 +1,9 @@
+#! /usr/bin/env python
+
 import os
+import shlex
 import subprocess
+import textwrap
 import time
 
 from ConfigParser import ConfigParser
@@ -10,31 +14,27 @@ import rumps
 
 DEFAULT_ICON_SIZE = (16, 16)
 
+player_properties = [
+    'shuffling',
+    'shuffling enabled',
+    'repeating',
+    'sound volume',
+    'player state',
+    'player position',
+]
+
 track_properties = [
     'name',
     'artist',
     'album',
     'album artist',
-    'player position',
     'duration',
     'disc number',
     'played count',
     'track number',
-    'starred',
     'popularity',
     'spotify url',
     'id',
-]
-
-player_properties = [
-    'shuffling enabled',
-    'shuffling',
-    'class',
-    'repeating',
-    'current track',
-    'sound volume',
-    'player state',
-    'artwork',
 ]
 
 commands = OrderedDict([
@@ -45,55 +45,51 @@ commands = OrderedDict([
     ('Previous track', ('previous track', 'step1.png')),
 ])
 
-character_subs = {
-    226: 34,
-    195: 'e',
-    # 174: '(R)'
-}
 
-
-def _replace_chars(unsafe):
-    return ''.join((chr(character_subs[ord(c)]) if isinstance(character_subs[ord(c)], int) else
-                   character_subs[ord(c)]) if ord(c) in character_subs else c if ord(c) < 128 else '' for c in unsafe)
+QUERY_STRING = '{' + \
+    ', '.join('{}: {}'.format(key.replace(' ', '_'), key) for key in player_properties) + \
+    '} & {' + \
+    ', '.join('{}: {}'.format(key.replace(' ', '_'), key) for key in track_properties) + \
+    '}'
 
 
 class MISC(rumps.App):
-    format_string = '{name:.35} - {album:.35} ({player position} / {duration})'
+    format_string = '{name:.35} - {album:.35} ({player_position} / {duration})'
 
     def __init__(self):
         super(MISC, self).__init__(type(self).__name__)
+
         self.properties = {}
+        self.title = ''
         self.icon = 'images/spotify.png'
+        self.menu = None
+
         self.load_settings()
         self.setup_menu()
 
     @rumps.timer(1)
     def check_status(self, sender):
         try:
-            props = self._run_osascript('get {get properties, get properties of current track}').split(', ')
-            for prop in props:
-                prop = _replace_chars(prop)
-                if any(map(prop.startswith, track_properties + player_properties)):
-                    key, _, val = prop.partition(':')
-                    if key in ('duration', 'player position'):
-                        val = time.strftime('%M:%S', time.gmtime(float(val)))
-                    if key == 'starred':
-                        val = '' if val == 'false' else '*' * int(val)
-                    if key == 'album' and any(map(val.startswith, ('http://', 'https://', 'spotify:'))):
-                        val = 'Spotify Ad'
-                    self.properties[key] = val
-                    last_key = key
-                else:
-                    self.properties[last_key] += ', ' + prop
+            self.properties = {}
+            for prop in shlex.split(self._run_osascript(QUERY_STRING).strip('{}')):
+                key, _, val = prop.partition(':')
+                key = key.replace(' ', '_')
+                self.properties[key] = val
 
-            for prop in track_properties:
-                self.menu['Current track'][prop].title = '{}: {}'.format(prop, self.properties[prop])
+            for key in ('duration', 'player_position'):
+                self.properties[key] = time.strftime('%M:%S', time.gmtime(float(self.properties[key])))
+
+            if any(map(self.properties['album'].startswith, ('http://', 'https://', 'spotify:'))):
+                self.properties['album'] = 'Spotify Ad'
+
+            for key, val in self.properties.items():
+                self.menu['Current track'][key].title = '{}: {}'.format(key, val)
 
             self.menu['Options']['Shuffle'].state = self.properties['shuffling'] == 'true'
             self.menu['Options']['Repeat'].state = self.properties['repeating'] == 'true'
         except Exception:
             raise
-        self.title = self.format_string.format(**{prop: self.properties[prop] for prop in track_properties})
+        self.title = self.format_string.format(**self.properties)
 
     def load_settings(self):
         try:
@@ -115,7 +111,7 @@ class MISC(rumps.App):
             None,
         ]
         self.menu = [rumps.MenuItem(title, icon=os.path.join('images', action[1]), dimensions=DEFAULT_ICON_SIZE,
-                     callback=lambda x: self._run_osascript(commands[x.title][0])) for title, action in commands.iteritems()]
+                     callback=lambda x: self._run_osascript(commands[x.title][0])) for title, action in commands.items()]
         self.menu.add(None)
         self.menu['Spotify'].set_icon('images/spotify.png', DEFAULT_ICON_SIZE)
         self.menu['Spotify']['Launch'].set_icon('images/power27.png', DEFAULT_ICON_SIZE)
@@ -140,14 +136,16 @@ class MISC(rumps.App):
 
     @rumps.clicked('Options', 'Format String')
     def set_format_string(self, sender):
-        help_text = """
-Enter any string you'd like to be displayed.
+        help_text = textwrap.dedent("""
+            Enter any string you'd like to be displayed.
+            
+            The following tokens would be replaced with the listed values for the current track.  
+            See the 'Current Track' submenu at any time to see these values while listening.
+            
+            """) + '\n'.join('{{{}}} - {}'.format(key, val) for key, val in self.properties.items())
 
-The following tokens would be replaced with the listed values for the current track.  See the 'Current Track' submenu at any time to see these values while listening
-
-""" + '\n'.join('{{{}}} - {}'.format(prop, self.properties[prop]) for prop in track_properties)
-
-        response = rumps.Window(title="Format String", message=help_text, default_text=self.format_string, cancel=True, dimensions=(450, 22)).run()
+        response = rumps.Window(title="Format String", message=help_text, default_text=self.format_string,
+                                cancel=True, dimensions=(450, 22)).run()
         if response.clicked:
             self.format_string = response.text.strip()
             config = ConfigParser()
@@ -167,7 +165,6 @@ The following tokens would be replaced with the listed values for the current tr
 
     @staticmethod
     def _run_osascript(command, application='Spotify'):
-        # print 'if application "{0}" is running then tell application "{0}" to {1}'.format(application, command)
         return subprocess.check_output([
             'osascript', '-e',
             'if application "{0}" is running then tell application "{0}" to {1}'.format(application, command)

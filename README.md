@@ -2,7 +2,7 @@
 
 ## Installation
 
-* Download https://github.com/Jzar/misc/releases/download/v0.1.1/misc.tgz
+* Download https://github.com/malikoth/misc/releases/download/v0.2/misc.tgz
 * Extract, and copy the app to your Applications folder
 * See the [Issues with Spotify](https://github.com/Jzar/misc#issues-with-spotify) section
  * Patch and restart Spotify if necessary
