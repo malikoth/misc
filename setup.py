@@ -3,9 +3,9 @@ from setuptools import setup
 setup(
     app=['misc.py'],
     name='misc',
-    version='0.1',
+    version='0.2',
     packages=[''],
-    url='http://github.com/Jzar/misc',
+    url='http://github.com/malikoth/misc',
     license='',
     author='Kyle Rich',
     author_email='',
