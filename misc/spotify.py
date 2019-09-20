@@ -23,6 +23,7 @@ PLAYER_PROPERTIES = [
     'player state',
     'player position',
     'shuffling enabled',
+    'version',
 ]
 
 CURRENT_TRACK='current track'

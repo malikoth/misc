@@ -21,4 +21,6 @@ setup(
         'iconfile': 'images/spotify.png',
     }},
     setup_requres=['py2app'],
+    install_requires=['rumps'],
+    dependency_links=['git+https://github.com/jaredks/rumps#egg=rumps']
 )

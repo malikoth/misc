@@ -10,10 +10,6 @@ DOUBLE_QUOTE_PATTERN = re.compile(r'"')
 SENTINEL = 'pSyJmWhXyM'
 SENTINEL_PATTERN = re.compile(SENTINEL)
 PREAMBLE = """
-to formatElement(key, val)
-	return quoted form of key & ": " & val
-end formatElement
-
 to quoted(val)
     set val to val as text
 	return quoted form of val
@@ -35,7 +31,7 @@ class Element:
             val += f' of {self.of}'
         if self.quote:
             val = f'my quoted({val})'
-        val = f'my formatElement("{self.name}", {val})'
+        val = f'quoted form of "{self.name}" & ": " & {val}'
         return val
 
 
@@ -49,7 +45,7 @@ def run(command, application=None):
         command = f'if app "{application}" is running then tell app "{application}" to {command}'
     code, out, err = osascript.run(command)
     if code:
-        raise Exception(err + f' ({code})')
+        raise Exception(f'({code}) - {err}')
     return out.strip()
 
 
