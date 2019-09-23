@@ -7,6 +7,7 @@ from configparser import ConfigParser
 from textwrap import dedent
 from pathlib import Path
 
+from cached_property import cached_property, cached_property_ttl
 import rumps
 
 from spotify import get_properties, TRACK_PROPERTIES, PLAYER_PROPERTIES
@@ -45,13 +46,6 @@ PROPERTY_UPDATE_INTERVAL = 1
 
 class MISC(rumps.App):
     def __init__(self):
-        self._last_updated = 0
-
-        # TODO: Remove these private property backing vars, replace with @cached_property in Python3.8
-        self._config = None
-        self._format_string = None
-        self._properties = None
-
         # TODO: Submit PR to rumps to convert Path to str
         super().__init__(type(self).__name__, icon=str(IMAGE_PATH / 'spotify.png'))
         self.menu_setup()
@@ -63,42 +57,32 @@ class MISC(rumps.App):
     def send(self, command):
         run(command, 'Spotify')
 
-    @property
+    @cached_property_ttl(PROPERTY_UPDATE_INTERVAL / 2)
     def properties(self):
-        if not self._properties or time.monotonic() - self._last_updated > PROPERTY_UPDATE_INTERVAL / 2:
-            props = get_properties()
-            props['duration'] = self.format_time(props['duration'] / 1000)
-            props['player position'] = self.format_time(props['player position'])
-            if any(map(props['album'].startswith, ('http://', 'https://', 'spotify:'))):
-                props['album'] = 'Spotify Ad'
-            self._properties = props
-            self._last_updated = time.monotonic()
-        return self._properties
+        props = get_properties()
+        if not props:
+            return {}
 
-    @property
+        props['duration'] = self.format_time(props['duration'] / 1000)
+        props['player position'] = self.format_time(props['player position'])
+        if any(map(props['album'].startswith, ('http://', 'https://', 'spotify:'))):
+            props['album'] = 'Spotify Ad'
+        return props
+
+    @cached_property
     def format_string(self):
-        if self._format_string is None:
-            self._format_string = self.config.get(
-                'options', 'format_string', vars={'format_string': DEFAULT_FORMAT_STRING})
-        return self._format_string
+        return self.config.get('options', 'format_string', vars={'format_string': DEFAULT_FORMAT_STRING})
 
-    @format_string.setter
-    def format_string_setter(self, value):
-        self._format_string = value
-        self.config.set('options', 'format_string', self.format_string)
-
-    @property
+    @cached_property
     def config(self):
-        if not self._config:
-            config = ConfigParser()
-            try:
-                with self.open('settings.ini') as f:
-                    config.readfp(f)
-            except IOError:
-                config.add_section('options')
-                config.set('options', 'format_string', DEFAULT_FORMAT_STRING)
-            self._config = config
-        return self._config
+        config = ConfigParser()
+        try:
+            with self.open('settings.ini') as f:
+                config.readfp(f)
+        except IOError:
+            config.add_section('options')
+            config.set('options', 'format_string', DEFAULT_FORMAT_STRING)
+        return config
 
     def config_save(self):
         with self.open('settings.ini', 'w') as f:
@@ -129,6 +113,9 @@ class MISC(rumps.App):
 
     @rumps.timer(1)
     def update_properties(self, sender):
+        if not self.properties:
+            return
+
         for prop in PLAYER_PROPERTIES:
             self.menu['Spotify'][prop].title = f'{prop}: {self.properties[prop]}'
 
@@ -143,7 +130,6 @@ class MISC(rumps.App):
 
         self.title = self.format_string.format(**self.properties)
 
-    # TODO: Figure out why this doesn't launch Spotify
     @rumps.clicked('Spotify', 'Launch')
     def launch_spotify(self, sender):
         run('tell app "Spotify" to activate')
@@ -154,15 +140,21 @@ class MISC(rumps.App):
 
     @rumps.clicked('Format String')
     def format_string_window(self, sender):
-        help_text = dedent("""
+        LF = '\n            '
+        help_text = dedent(f"""
             Enter any string you'd like to be displayed.
 
             The following tokens would be replaced with the listed values
             See the 'Spotify' and 'Current Track' submenus to see these values while listening
 
-            """)
-        help_text += '\n'.join(f'{{{prop}}} - {self.properties[prop]}' for prop in TRACK_PROPERTIES)
+            TRACK PROPERTIES:
+            {LF.join(f'{{{prop}}} - {self.properties[prop]}' for prop in TRACK_PROPERTIES)}
 
+            PLAYER PROPERTIES:
+            {LF.join(f'{{{prop}}} - {self.properties[prop]}' for prop in TRACK_PROPERTIES)}
+            """)
+
+        # TODO: Figure out why this text is not editable
         response = rumps.Window(
             title="Format String",
             message=help_text,
@@ -173,6 +165,7 @@ class MISC(rumps.App):
 
         if response.clicked:
             self.format_string = response.text.strip()
+            self.config.set('options', 'format_string', self.format_string)
             self.config_save()
 
     @rumps.clicked('Shuffle')

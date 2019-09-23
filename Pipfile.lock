@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "e42d2eab7ede6aa5476827a08f31f03391c9b7232104767227048852c16b0dca"
+            "sha256": "c3ef0a654149bcc5f3db834b96ed710a1c59230a47dbb771ff247da009cda469"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -16,6 +16,14 @@
         ]
     },
     "default": {
+        "cached-property": {
+            "hashes": [
+                "sha256:3a026f1a54135677e7da5ce819b0c690f156f37976f3e30c5430740725203d7f",
+                "sha256:9217a59f14a5682da7c4b8829deadbfc194ac22e9908ccf7c8820234e80a1504"
+            ],
+            "index": "pypi",
+            "version": "==1.5.1"
+        },
         "osascript": {
             "hashes": [
                 "sha256:765b41b12b994d27ae5619a74afc8d17a118b695b8000c9e6842029fd7cbfa3b"

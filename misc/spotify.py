@@ -14,6 +14,7 @@ TRACK_PROPERTIES = [
     'popularity',
     'spotify url',
     'id',
+    'artwork url',
 ]
 
 PLAYER_PROPERTIES = [
@@ -52,7 +53,10 @@ GET_PROPERTIES_COMMAND = build_command('Spotify',
 
 
 def get_properties():
-    return json.loads(to_json(run(GET_PROPERTIES_COMMAND)))
+    output = run(GET_PROPERTIES_COMMAND)
+    if not output:
+        return {}
+    return json.loads(to_json(output))
 
 
 if __name__ == "__main__":
