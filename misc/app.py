@@ -1,7 +1,5 @@
 #! /usr/bin/env python
 
-import os
-import subprocess
 import time
 from configparser import ConfigParser
 from textwrap import dedent
@@ -38,9 +36,11 @@ ICONS = {
     'Next track': 'step.png',
     'Previous track': 'step1.png',
 }
-DEFAULT_FORMAT_STRING = '{name:.30} - {album:.25} ({player position} / {duration})'
+
+# TODO: Think of a way to specify longer, shorter, variable length displays, etc.
+DEFAULT_FORMAT_STRING = '{name:.50} - {album:.50} ({player position} / {duration})'
 DEFAULT_ICON_SIZE = (16, 16)
-IMAGE_PATH = Path().parent / 'images'
+IMAGE_PATH = Path(__file__).parents[1] / 'images'
 PROPERTY_UPDATE_INTERVAL = 1
 
 
@@ -140,6 +140,8 @@ class MISC(rumps.App):
 
     @rumps.clicked('Format String')
     def format_string_window(self, sender):
+        # Including 12 spaces in the LF because the rest of the text has that indentation is a hack
+        # TODO: Figure out something better for making indentation consistent and idiomatic
         LF = '\n            '
         help_text = dedent(f"""
             Enter any string you'd like to be displayed.
